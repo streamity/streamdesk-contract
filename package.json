@@ -1,0 +1,15 @@
+{
+  "name": "Streamity",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {},
+  "author": "Nick Stepanov",
+  "dependencies": {
+    "ethers": "^2.2.6",
+    "secp256k1": "^3.5.0"
+  }
+}
