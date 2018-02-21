@@ -12,7 +12,7 @@ contract TestStreamity {
   }
 
   function testInitialBalanceWithNewMetaCoin() public {
-    Streamity meta = new Streamity();
+    Streamity stm = new Streamity();
 
     uint expected = 10000;
 
