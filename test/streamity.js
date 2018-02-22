@@ -107,10 +107,13 @@ contract('Streamity', function (accounts) {
       return Streamity.deployed().then(function (instance) {
           stm = instance;
 
-          return stm.releaseTokens(hash, 0, {from: buyer});
+          return stm.releaseTokens.call(hash, 0, {from: buyer});
       }).then(function (result) {
-         return stm.releaseTokens.call(hash, 0, {from: buyer});
+         assert.equal(true, result, "Problem with deal");
+         return stm.releaseTokens(hash, 0, {from: buyer});
       }).then(function (result) {
+        return stm.releaseTokens.call(hash, 0, {from: buyer});
+     }).then(function (result) {
         assert.equal(false, result, "You can't relese twice");
         return stm.getStatusDeal(hash);
       }).then(function (result) {
