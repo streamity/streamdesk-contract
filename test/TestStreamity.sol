@@ -8,15 +8,5 @@ contract TestStreamity {
 
   function testRecover() public {
     Streamity stm = Streamity(DeployedAddresses.Streamity());
-	
   }
-
-  function testInitialBalanceWithNewMetaCoin() public {
-    Streamity stm = new Streamity();
-
-    uint expected = 10000;
-
-    Assert.equal(expected, expected, "Owner should have 10000 MetaCoin initially");
-  }
-
 }

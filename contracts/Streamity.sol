@@ -76,15 +76,15 @@ contract Streamity is Ownable {
     }
     
     // _additionalComission is wei
-	uint16 constant GAS_releaseTokens = 22300;
-    function releaseTokens(bytes32 _hashDeal, uint256 _additionalComission) 
+    uint16 constant GAS_releaseTokens = 22300;
+    function releaseTokens(bytes32 _hashDeal, uint256 _additionalGas) 
     external returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
         
         if (deal.status == STATUS_DEAL_APPROVE) {
             deal.status = STATUS_DEAL_RELEASE; 
-            bool result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? _additionalComission : 0));
+            bool result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? (GAS_releaseTokens + _additionalGas) * tx.gasprice : 0));
 
             if (result == false) {
                 deal.status = STATUS_DEAL_APPROVE; 
@@ -99,8 +99,8 @@ contract Streamity is Ownable {
         return false;
     }
 
-	uint16 constant GAS_cancelSeller= 23000;
-    function cancelSeller(bytes32 _hashDeal, uint256 _additionalComission) 
+    uint16 constant GAS_cancelSeller= 23000;
+    function cancelSeller(bytes32 _hashDeal, uint256 _additionalGas) 
     external onlyOwner returns(bool)  
     {
 
@@ -111,7 +111,7 @@ contract Streamity is Ownable {
 
         if (deal.status == STATUS_DEAL_WAIT_CONFIRMATION) {
             deal.status = STATUS_DEAL_RELEASE; 
-            bool result = transferMinusComission(deal.buyer, deal.value, (msg.sender == owner ? _additionalComission : 0));
+            bool result = transferMinusComission(deal.buyer, deal.value, (msg.sender == owner ? (GAS_cancelSeller + _additionalGas) * tx.gasprice : 0));
 
             if (result == false) {
                 deal.status = STATUS_DEAL_WAIT_CONFIRMATION; 

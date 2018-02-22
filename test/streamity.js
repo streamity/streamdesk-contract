@@ -25,7 +25,7 @@ contract('Streamity', function (accounts) {
 });
 
 contract('Streamity', function (accounts) {
-    var tradeID = "0x1ec6b3564db327475a799b6eb971ad11478bf4a1506a1ba2e2f9d9f25b6eca00";
+    var tradeID = Web3Utils.randomHex(32); // sample "0x1ec6b3564db327475a799b6eb971ad11478bf4a1506a1ba2e2f9d9f25b6eca00"
     var ownerContract = accounts[0];
     var buyer = accounts[2];
     var seller = accounts[1];
@@ -109,8 +109,9 @@ contract('Streamity', function (accounts) {
 
           return stm.releaseTokens(hash, 0, {from: buyer});
       }).then(function (result) {
-         return stm.releaseTokens.call(hash, 0, {from: seller});
+         return stm.releaseTokens.call(hash, 0, {from: buyer});
       }).then(function (result) {
+        assert.equal(false, result, "You can't relese twice");
         return stm.getStatusDeal(hash);
       }).then(function (result) {
         assert.equal(STATUS_NO_DEAL, parseInt(result, 16), "Deal must has been deleted");
