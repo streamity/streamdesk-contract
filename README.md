@@ -1,5 +1,5 @@
-# Streamity Escrow Smart Contract 
-Streamity Escrow Smart Contract is a etherium smart contract, build on truffle framework. 
+# StreamDesk Escrow Smart Contract 
+StreamDesk Escrow Smart Contract is a ethereum smart contract, build on truffle framework. 
 
 ### Options:
   - Create deal
