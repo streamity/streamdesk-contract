@@ -81,9 +81,11 @@ contract('Streamity', function (accounts) {
       }).then(function (result) {
          return stm.releaseTokens(hash, 0, {from: seller});
       }).then(function (result) {
+         return stm.releaseTokens(hash, 0, {from: ownerContract});
+      }).then(function (result) {
         return stm.getStatusDeal(hash);
       }).then(function (result) {
-        assert.equal(STATUS_DEAL_WAIT_CONFIRMATION, parseInt(result, 16), "Deal must has been deleted");
+        assert.equal(STATUS_DEAL_WAIT_CONFIRMATION, parseInt(result, 16), "Deal must has status wait confirmation");
       });
     });
 

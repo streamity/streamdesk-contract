@@ -76,6 +76,7 @@ contract Streamity is Ownable {
     }
     
     // _additionalComission is wei
+	uint16 constant GAS_releaseTokens = 22300;
     function releaseTokens(bytes32 _hashDeal, uint256 _additionalComission) 
     external returns(bool) 
     {
@@ -98,6 +99,7 @@ contract Streamity is Ownable {
         return false;
     }
 
+	uint16 constant GAS_cancelSeller= 23000;
     function cancelSeller(bytes32 _hashDeal, uint256 _additionalComission) 
     external onlyOwner returns(bool)  
     {
