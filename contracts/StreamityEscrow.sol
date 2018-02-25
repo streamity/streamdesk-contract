@@ -1,24 +1,29 @@
 pragma solidity ^0.4.18;
 
-import './Ownable.sol';
-import './SafeMath.sol';
+import './Streamity/StreamityContract.sol';
 
-contract Streamity is Ownable {
+contract StreamityEscrow is Ownable {
     using SafeMath for uint256;
 
     uint8 constant STATUS_NO_DEAL = 0x0;
     uint8 constant STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
     uint8 constant STATUS_DEAL_APPROVE = 0x02;
     uint8 constant STATUS_DEAL_RELEASE = 0x03;
-    uint8 constant STATUS_DEAL_DISPUT = 0x04;
+	
+	TokenERC20 streamityContractAddress;
     
-    uint256 public availableForWithdrawal; 
+    uint256 public availableForWithdrawal;
 
     uint32 public requestCancellationTime;
-    
-    function Streamity() public {
+
+    mapping(address => uint256) public availableForWithdrawalAltCoint; // TODO 
+
+    mapping(bytes32 => Deal) public streamityTransfers;
+
+    function StreamityEscrow() public {
         owner = msg.sender; 
         requestCancellationTime = 2 hours;
+		streamityContractAddress = TokenERC20(0x0); // TODO
     }
 
     struct Deal {
@@ -28,9 +33,9 @@ contract Streamity is Ownable {
         address buyer;
         uint8 status;
         uint256 commission;
+        bool isAltCoin;
     }
 
-    mapping(bytes32 => Deal) public streamityTransfers;
 
     event StartDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
     event ApproveDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
@@ -44,12 +49,24 @@ contract Streamity is Ownable {
         require(msg.value > 0);
         require(msg.value == _value);
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, msg.value, _commission);
-        require(ecrecover(_hashDeal, _v, _r, _s) == owner); // validate sign from server
-        require(streamityTransfers[_hashDeal].status == STATUS_NO_DEAL); 
-        startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value);
+        verifyDeal(_hashDeal, _v, _r, _s);
+        startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value, false);
     }
 
-    function startDealForUser(bytes32 _hashDeal, address _seller, address _buyer, uint256 _commission, uint256 _value) 
+    function payAltCoin(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, uint8 _v, bytes32 _r, bytes32 _s) 
+    external 
+    {
+        bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, _value, _commission);
+        verifyDeal(_hashDeal, _v, _r, _s);
+        startDealForUser(_hashDeal, _seller, _buyer, _commission, _value, true);
+    }
+
+    function verifyDeal(bytes32 _hashDeal, uint8 _v, bytes32 _r, bytes32 _s) private constant {
+        require(ecrecover(_hashDeal, _v, _r, _s) == owner);
+        require(streamityTransfers[_hashDeal].status == STATUS_NO_DEAL); 
+    }
+
+    function startDealForUser(bytes32 _hashDeal, address _seller, address _buyer, uint256 _commission, uint256 _value, bool isAltCoin) 
     private returns(bytes32) 
     {
         Deal storage userDeals = streamityTransfers[_hashDeal];
@@ -59,6 +76,7 @@ contract Streamity is Ownable {
         userDeals.commission = _commission; 
         userDeals.cancelTime = block.timestamp + requestCancellationTime; 
         userDeals.status = STATUS_DEAL_WAIT_CONFIRMATION;
+        userDeals.isAltCoin = isAltCoin;
         
         StartDealEvent(_hashDeal, _seller, _buyer);
         
@@ -71,6 +89,10 @@ contract Streamity is Ownable {
         _to.transfer(_amount);
     }
 
+    function withdrawCommisionToAddressAltCoin(address _to, uint256 _amount) external onlyOwner {
+        
+    }
+
     function getStatusDeal(bytes32 _hashDeal) public constant returns (uint8) {
         return streamityTransfers[_hashDeal].status;
     }
@@ -80,11 +102,17 @@ contract Streamity is Ownable {
     function releaseTokens(bytes32 _hashDeal, uint256 _additionalGas) 
     external returns(bool) 
     {
-        Deal storage deal = streamityTransfers[_hashDeal];
         
+        Deal storage deal = streamityTransfers[_hashDeal];
+        require(deal.isAltCoin == false);
         if (deal.status == STATUS_DEAL_APPROVE) {
             deal.status = STATUS_DEAL_RELEASE; 
-            bool result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? (GAS_releaseTokens + _additionalGas) * tx.gasprice : 0));
+            bool result = false;
+
+            if(deal.isAltCoin == false)
+                result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? (GAS_releaseTokens + _additionalGas) * tx.gasprice : 0));
+            else 
+                result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
 
             if (result == false) {
                 deal.status = STATUS_DEAL_APPROVE; 
@@ -105,13 +133,19 @@ contract Streamity is Ownable {
     {
 
         Deal storage deal = streamityTransfers[_hashDeal];
-        
+        require(deal.isAltCoin == false);
+
         if (deal.cancelTime > block.timestamp)
             return false;
 
         if (deal.status == STATUS_DEAL_WAIT_CONFIRMATION) {
             deal.status = STATUS_DEAL_RELEASE; 
-            bool result = transferMinusComission(deal.buyer, deal.value, (msg.sender == owner ? (GAS_cancelSeller + _additionalGas) * tx.gasprice : 0));
+
+            bool result = false;
+            if(deal.isAltCoin == false)
+                result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? (GAS_releaseTokens + _additionalGas) * tx.gasprice : 0));
+            else 
+                result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
 
             if (result == false) {
                 deal.status = STATUS_DEAL_WAIT_CONFIRMATION; 
@@ -140,10 +174,10 @@ contract Streamity is Ownable {
         return false;
     }
 
-    function transferMinusComission(address _to, uint256 _value, uint256 commission) 
+    function transferMinusComission(address _to, uint256 _value, uint256 _commission) 
     private returns(bool) 
     {
-        uint256 _totalComission = commission; 
+        uint256 _totalComission = _commission; 
         if (_value - _totalComission > _value) 
             return false; 
         
@@ -151,6 +185,16 @@ contract Streamity is Ownable {
 
         _to.transfer(_value - _totalComission);
         return true;
+    }
+
+    function transferMinusComissionAltCoin(address _contract, address _to, uint256 _value, uint256 _commission) 
+    private returns(bool) 
+    {
+        uint256 _totalComission = _commission; 
+        if (_value - _totalComission > _value) 
+            return false; 
+
+        return TokenERC20(_contract).transferFrom(address(this), _to, _value - _totalComission);
     }
 }
 

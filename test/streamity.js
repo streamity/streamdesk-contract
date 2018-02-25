@@ -4,7 +4,7 @@ var secp256k1 = require('secp256k1')
 var utils = require('ethers').utils;
 var Wallet = require('ethers').Wallet;
 var Web3Utils = require('web3-utils');
-var Streamity = artifacts.require("../contract/Streamity.sol");
+var Streamity = artifacts.require("../contract/StreamityEscrow.sol");
 var privateKeyOwner = "0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3";
 
 var STATUS_NO_DEAL = 0x0;
@@ -13,7 +13,7 @@ var STATUS_DEAL_APPROVE = 0x02;
 var STATUS_DEAL_RELEASE = 0x03;
 var STATUS_DEAL_DISPUT = 0x04;
 
-contract('Streamity', function (accounts) {
+contract('StreamityEscrow', function (accounts) {
     it("Owner created", function () {
         return Streamity.deployed().then(function (instance) {
             stm = instance;
@@ -24,7 +24,7 @@ contract('Streamity', function (accounts) {
     });
 });
 
-contract('Streamity', function (accounts) {
+contract('StreamityEscrow', function (accounts) {
     var tradeID = Web3Utils.randomHex(32); // sample "0x1ec6b3564db327475a799b6eb971ad11478bf4a1506a1ba2e2f9d9f25b6eca00"
     var ownerContract = accounts[0];
     var buyer = accounts[2];
