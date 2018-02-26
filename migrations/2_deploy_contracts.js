@@ -1,5 +1,5 @@
-var Streamity = artifacts.require("./Streamity.sol");
+var StreamityEscrow = artifacts.require("./StreamityEscrow.sol");
 
 module.exports = function(deployer) {
-  deployer.deploy(Streamity);
+  deployer.deploy(StreamityEscrow);
 };
