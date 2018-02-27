@@ -1,10 +1,13 @@
 pragma solidity ^0.4.18;
 
 import './Streamity/StreamityContract.sol';
+import './Zeppelin/ReentrancyGuard.sol';
+import "./Zeppelin/ECRecovery.sol";
 
-contract StreamityEscrow is Ownable {
+contract StreamityEscrow is Ownable, ReentrancyGuard  {
     using SafeMath for uint256;
-
+    using ECRecovery for bytes32;
+	
     uint8 constant STATUS_NO_DEAL = 0x0;
     uint8 constant STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
     uint8 constant STATUS_DEAL_APPROVE = 0x02;
@@ -44,6 +47,7 @@ contract StreamityEscrow is Ownable {
     
     function pay(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, uint8 _v, bytes32 _r, bytes32 _s) 
     external 
+	
     payable 
     {
         require(msg.value > 0);
@@ -55,13 +59,14 @@ contract StreamityEscrow is Ownable {
 
     function payAltCoin(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, uint8 _v, bytes32 _r, bytes32 _s) 
     external 
+	
     {
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, _value, _commission);
         verifyDeal(_hashDeal, _v, _r, _s);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, _value, true);
     }
 
-    function verifyDeal(bytes32 _hashDeal, uint8 _v, bytes32 _r, bytes32 _s) private constant {
+    function verifyDeal(bytes32 _hashDeal, uint8 _v, bytes32 _r, bytes32 _s) private view {
         require(ecrecover(_hashDeal, _v, _r, _s) == owner);
         require(streamityTransfers[_hashDeal].status == STATUS_NO_DEAL); 
     }
@@ -74,7 +79,7 @@ contract StreamityEscrow is Ownable {
         userDeals.buyer = _buyer;
         userDeals.value = _value; 
         userDeals.commission = _commission; 
-        userDeals.cancelTime = block.timestamp + requestCancellationTime; 
+        userDeals.cancelTime = block.timestamp.add(requestCancellationTime); 
         userDeals.status = STATUS_DEAL_WAIT_CONFIRMATION;
         userDeals.isAltCoin = isAltCoin;
         
@@ -85,7 +90,7 @@ contract StreamityEscrow is Ownable {
 
     function withdrawCommisionToAddress(address _to, uint256 _amount) external onlyOwner {
         require(_amount <= availableForWithdrawal); 
-        availableForWithdrawal -= _amount;
+        availableForWithdrawal.sub(_amount);
         _to.transfer(_amount);
     }
 
@@ -93,16 +98,18 @@ contract StreamityEscrow is Ownable {
         
     }
 
-    function getStatusDeal(bytes32 _hashDeal) public constant returns (uint8) {
+    function getStatusDeal(bytes32 _hashDeal) external view returns (uint8) {
         return streamityTransfers[_hashDeal].status;
     }
     
     // _additionalComission is wei
-    uint16 constant GAS_releaseTokens = 22300;
+    uint256 constant GAS_releaseTokens = 22300;
     function releaseTokens(bytes32 _hashDeal, uint256 _additionalGas) 
-    external returns(bool) 
+    external 
+	nonReentrant
+    	
+	returns(bool) 
     {
-        
         Deal storage deal = streamityTransfers[_hashDeal];
         require(deal.isAltCoin == false);
         if (deal.status == STATUS_DEAL_APPROVE) {
@@ -110,7 +117,7 @@ contract StreamityEscrow is Ownable {
             bool result = false;
 
             if(deal.isAltCoin == false)
-                result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? (GAS_releaseTokens + _additionalGas) * tx.gasprice : 0));
+                result = transferMinusComission(deal.buyer, deal.value, deal.commission.add((msg.sender == owner ? (GAS_releaseTokens.add(_additionalGas)).mul(tx.gasprice) : 0)));
             else 
                 result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
 
@@ -127,9 +134,12 @@ contract StreamityEscrow is Ownable {
         return false;
     }
 
-    uint16 constant GAS_cancelSeller= 23000;
+    uint256 constant GAS_cancelSeller= 23000;
     function cancelSeller(bytes32 _hashDeal, uint256 _additionalGas) 
-    external onlyOwner returns(bool)  
+    external onlyOwner 
+	nonReentrant
+    	
+	returns(bool)  
     {
 
         Deal storage deal = streamityTransfers[_hashDeal];
@@ -143,7 +153,7 @@ contract StreamityEscrow is Ownable {
 
             bool result = false;
             if(deal.isAltCoin == false)
-                result = transferMinusComission(deal.buyer, deal.value, deal.commission + (msg.sender == owner ? (GAS_releaseTokens + _additionalGas) * tx.gasprice : 0));
+                result = transferMinusComission(deal.buyer, deal.value, deal.commission.add((msg.sender == owner ? (GAS_releaseTokens.add(_additionalGas)).mul(tx.gasprice) : 0)));
             else 
                 result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
 
@@ -161,7 +171,11 @@ contract StreamityEscrow is Ownable {
     }
 
     function approveDeal(bytes32 _hashDeal) 
-    public onlyOwner returns(bool) 
+    external 
+	onlyOwner 
+	nonReentrant
+	
+	returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
         
@@ -178,12 +192,10 @@ contract StreamityEscrow is Ownable {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
-        if (_value - _totalComission > _value) 
-            return false; 
         
-        availableForWithdrawal += _totalComission; 
+        availableForWithdrawal = availableForWithdrawal.add(_totalComission); 
 
-        _to.transfer(_value - _totalComission);
+        _to.transfer(_value.sub(_totalComission));
         return true;
     }
 
@@ -191,11 +203,9 @@ contract StreamityEscrow is Ownable {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
-        if (_value - _totalComission > _value) 
-            return false; 
-
-        return TokenERC20(_contract).transferFrom(address(this), _to, _value - _totalComission);
+        return TokenERC20(_contract).transferFrom(address(this), _to, _value.sub(_totalComission));
     }
+	
 }
 
 
