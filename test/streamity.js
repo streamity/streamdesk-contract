@@ -14,6 +14,7 @@ var STATUS_DEAL_APPROVE = 0x02;
 var STATUS_DEAL_RELEASE = 0x03;
 var STATUS_DEAL_DISPUT = 0x04;
 
+
 contract('StreamityContract', function (accounts) {
     var ownerContract = accounts[0];
     it("StreamityContract start", function () {
@@ -47,11 +48,12 @@ contract('StreamityEscrow', function (accounts) {
     var commission = Web3Utils.toWei((value_eth * 5 / 100).toString(), 'ether'); // 5 %
     var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
     var signature = getSignatureSig(privateKeyOwner, hash);
-    
+	
     it("Create deal", function () {
+		
         return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
-
+			
             return stm.pay(tradeID, seller, buyer, value, commission, signature, {
                 value: value,
                 from: seller

@@ -112,7 +112,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 	returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
-        require(deal.isAltCoin == false);
+
         if (deal.status == STATUS_DEAL_APPROVE) {
             deal.status = STATUS_DEAL_RELEASE; 
             bool result = false;
@@ -143,7 +143,6 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     {
 
         Deal storage deal = streamityTransfers[_hashDeal];
-        require(deal.isAltCoin == false);
 
         if (deal.cancelTime > block.timestamp)
             return false;
@@ -200,11 +199,11 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         return true;
     }
 
-    function transferMinusComissionAltCoin(address _contract, address _to, uint256 _value, uint256 _commission) 
+    function transferMinusComissionAltCoin(TokenERC20 _contract, address _to, uint256 _value, uint256 _commission) 
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
-        TokenERC20(_contract).transfer(_to, _value.sub(_totalComission));
+        _contract.transfer(_to, _value.sub(_totalComission));
         return true;
     }
 
