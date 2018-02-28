@@ -2,16 +2,16 @@ pragma solidity ^0.4.18;
 
 import './Streamity/StreamityContract.sol';
 import './Zeppelin/ReentrancyGuard.sol';
-import "./Zeppelin/ECRecovery.sol";
+import './Zeppelin/ECRecovery.sol';
 
-contract StreamityEscrow is Ownable, ReentrancyGuard  {
+contract StreamityEscrow is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using ECRecovery for bytes32;
 	
-    uint8 constant STATUS_NO_DEAL = 0x0;
-    uint8 constant STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
-    uint8 constant STATUS_DEAL_APPROVE = 0x02;
-    uint8 constant STATUS_DEAL_RELEASE = 0x03;
+    uint8 constant public STATUS_NO_DEAL = 0x0;
+    uint8 constant public STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
+    uint8 constant public STATUS_DEAL_APPROVE = 0x02;
+    uint8 constant public STATUS_DEAL_RELEASE = 0x03;
 	
 	TokenERC20 streamityContractAddress;
     
@@ -26,7 +26,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard  {
     function StreamityEscrow() public {
         owner = msg.sender; 
         requestCancellationTime = 2 hours;
-		streamityContractAddress = TokenERC20(0x0); // TODO
+        streamityContractAddress = TokenERC20(0x0); // TODO
     }
 
     struct Deal {
@@ -45,29 +45,31 @@ contract StreamityEscrow is Ownable, ReentrancyGuard  {
     event ReleasedEvent(bytes32 _hashDeal, address _seller, address _buyer);
     event SellerCancellEvent(bytes32 _hashDeal, address _seller, address _buyer);
     
-    function pay(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, uint8 _v, bytes32 _r, bytes32 _s) 
+    function pay(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, bytes _sign) 
     external 
-	
     payable 
     {
         require(msg.value > 0);
         require(msg.value == _value);
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, msg.value, _commission);
-        verifyDeal(_hashDeal, _v, _r, _s);
+        require(_hashDeal.recover(_sign) == owner);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value, false);
     }
-
-    function payAltCoin(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, uint8 _v, bytes32 _r, bytes32 _s) 
-    external 
 	
+	function () public payable {}
+
+    function payAltCoin(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, bytes _sign) 
+    external 
     {
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, _value, _commission);
-        verifyDeal(_hashDeal, _v, _r, _s);
+        verifyDeal(_hashDeal, _sign);
+        bool result = TokenERC20(streamityContractAddress).transferFrom(msg.sender, address(this), _value);
+        require(result == true);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, _value, true);
     }
 
-    function verifyDeal(bytes32 _hashDeal, uint8 _v, bytes32 _r, bytes32 _s) private view {
-        require(ecrecover(_hashDeal, _v, _r, _s) == owner);
+    function verifyDeal(bytes32 _hashDeal, bytes _sign) private view {
+        require(_hashDeal.recover(_sign) == owner);
         require(streamityTransfers[_hashDeal].status == STATUS_NO_DEAL); 
     }
 
@@ -137,8 +139,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard  {
     uint256 constant GAS_cancelSeller= 23000;
     function cancelSeller(bytes32 _hashDeal, uint256 _additionalGas) 
     external onlyOwner 
-	nonReentrant
-    	
+	nonReentrant	
 	returns(bool)  
     {
 
@@ -173,8 +174,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard  {
     function approveDeal(bytes32 _hashDeal) 
     external 
 	onlyOwner 
-	nonReentrant
-	
+	nonReentrant	
 	returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
@@ -193,6 +193,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard  {
     {
         uint256 _totalComission = _commission; 
         
+        require(availableForWithdrawal.add(_totalComission) > availableForWithdrawal); // Check for overflows
+
         availableForWithdrawal = availableForWithdrawal.add(_totalComission); 
 
         _to.transfer(_value.sub(_totalComission));
@@ -203,7 +205,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard  {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
-        return TokenERC20(_contract).transferFrom(address(this), _to, _value.sub(_totalComission));
+        TokenERC20(_contract).transfer(_to, _value.sub(_totalComission));
+        return true;
     }
 	
 }

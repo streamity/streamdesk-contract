@@ -14,17 +14,6 @@ var STATUS_DEAL_RELEASE = 0x03;
 var STATUS_DEAL_DISPUT = 0x04;
 
 contract('StreamityEscrow', function (accounts) {
-    it("Owner created", function () {
-        return Streamity.deployed().then(function (instance) {
-            stm = instance;
-            return stm.owner.call();
-        }).then(function (owner) {
-            assert.equal(accounts[0], owner, "Owner created");
-        });
-    });
-});
-
-contract('StreamityEscrow', function (accounts) {
     var tradeID = Web3Utils.randomHex(32); // sample "0x1ec6b3564db327475a799b6eb971ad11478bf4a1506a1ba2e2f9d9f25b6eca00"
     var ownerContract = accounts[0];
     var buyer = accounts[2];
@@ -34,12 +23,12 @@ contract('StreamityEscrow', function (accounts) {
     var value = Web3Utils.toWei(value_eth, 'ether'); // 0.5 eth
     var commission = Web3Utils.toWei((value_eth * 5 / 100).toString(), 'ether'); // 5 %
     var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
-    var signature = getSignature(privateKeyOwner, hash);
-
+    var signature = getSignatureSig(privateKeyOwner, hash);
+    
     it("Create deal", function () {
         return Streamity.deployed().then(function (instance) {
             stm = instance;
-            return stm.pay(tradeID, seller, buyer, value, commission, signature.v, signature.r, signature.s, {
+            return stm.pay(tradeID, seller, buyer, value, commission, signature, {
                 value: value,
                 from: seller
             });
@@ -122,7 +111,7 @@ contract('StreamityEscrow', function (accounts) {
     });
 });
 
-// sign private key
+
 function getSignature(privateKey, message) {
 
     var signingKey = new SigningKey(privateKey);
@@ -137,6 +126,17 @@ function getSignature(privateKey, message) {
         v: sig.recoveryParam + 27
     };
 }
+
+// sign
+function getSignatureSig(privateKey, message) {
+    
+        var signingKey = new SigningKey(privateKey);
+        var sig = signingKey.signDigest(message);
+    
+        signature = (hexPad(sig.r, 32) + hexPad(sig.s, 32).substring(2) + (sig.recoveryParam ? '1c' : '1b'));
+    
+        return signature;
+    }
 
 function hexPad(value, length) {
     while (value.length < 2 * length + 2) {
