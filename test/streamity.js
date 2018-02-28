@@ -4,7 +4,8 @@ var secp256k1 = require('secp256k1')
 var utils = require('ethers').utils;
 var Wallet = require('ethers').Wallet;
 var Web3Utils = require('web3-utils');
-var Streamity = artifacts.require("../contract/StreamityEscrow.sol");
+var StreamityEscrow = artifacts.require("../contract/StreamityEscrow.sol");
+var StreamityContract = artifacts.require("../contract/Streamity/StreamityContract.sol");
 var privateKeyOwner = "0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3";
 
 var STATUS_NO_DEAL = 0x0;
@@ -12,6 +13,28 @@ var STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
 var STATUS_DEAL_APPROVE = 0x02;
 var STATUS_DEAL_RELEASE = 0x03;
 var STATUS_DEAL_DISPUT = 0x04;
+
+contract('StreamityContract', function (accounts) {
+    var ownerContract = accounts[0];
+    it("StreamityContract start", function () {
+        StreamityContract.deployed().then(function (instance) {
+            streamityToken = instance; 
+            var UNIX_TIMESTAMP = Math.round(new Date().getTime() / 1000);
+            return streamityToken.startCrowd(1000, UNIX_TIMESTAMP, 5, 0, 0);
+        }).then(function(result){
+            return streamityToken.transferWeb3js(accounts[1], 5, {from: ownerContract});
+        }).then(function(result){
+           return streamityToken.balanceOf.call(accounts[1]);
+        }).then(function(result){
+            assert.equal(5, result.toString(), "Can't transfer token to account");
+            return streamityToken.approve(StreamityEscrow.address, 4, {from: accounts[1]}); // approve for Escrow smart contract 
+        }).then(function(result){
+            return streamityToken.allowance.call(accounts[1], StreamityEscrow.address);
+        }).then(function(result){
+            assert.equal(4, result.toString(), "Status deal is not wait");
+        });
+    });
+});
 
 contract('StreamityEscrow', function (accounts) {
     var tradeID = Web3Utils.randomHex(32); // sample "0x1ec6b3564db327475a799b6eb971ad11478bf4a1506a1ba2e2f9d9f25b6eca00"
@@ -26,8 +49,9 @@ contract('StreamityEscrow', function (accounts) {
     var signature = getSignatureSig(privateKeyOwner, hash);
     
     it("Create deal", function () {
-        return Streamity.deployed().then(function (instance) {
+        return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
+
             return stm.pay(tradeID, seller, buyer, value, commission, signature, {
                 value: value,
                 from: seller
@@ -54,7 +78,7 @@ contract('StreamityEscrow', function (accounts) {
     });
 
     it("Try cancel deal before 2 hours", function () {
-        return Streamity.deployed().then(function (instance) {
+        return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
             return stm.cancelSeller.call(hash, 0, {from : ownerContract});
         }).then(function (result) {
@@ -63,7 +87,7 @@ contract('StreamityEscrow', function (accounts) {
     });
 
     it("Try Release unprove tokens", function () {
-      return Streamity.deployed().then(function (instance) {
+      return StreamityEscrow.deployed().then(function (instance) {
           stm = instance;
 
           return stm.releaseTokens(hash, 0, {from: buyer});
@@ -79,7 +103,7 @@ contract('StreamityEscrow', function (accounts) {
     });
 
     it("Approve deal", function () {
-        return Streamity.deployed().then(function (instance) {
+        return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
 
             return stm.approveDeal(hash, {from: ownerContract});
@@ -93,7 +117,7 @@ contract('StreamityEscrow', function (accounts) {
     });
 
     it("Release tokens", function () {
-      return Streamity.deployed().then(function (instance) {
+      return StreamityEscrow.deployed().then(function (instance) {
           stm = instance;
 
           return stm.releaseTokens.call(hash, 0, {from: buyer});
@@ -109,8 +133,8 @@ contract('StreamityEscrow', function (accounts) {
         assert.equal(STATUS_NO_DEAL, parseInt(result, 16), "Deal must has been deleted");
       });
     });
+    
 });
-
 
 function getSignature(privateKey, message) {
 

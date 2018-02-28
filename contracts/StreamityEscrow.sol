@@ -13,7 +13,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     uint8 constant public STATUS_DEAL_APPROVE = 0x02;
     uint8 constant public STATUS_DEAL_RELEASE = 0x03;
 	
-	TokenERC20 streamityContractAddress;
+	TokenERC20 public streamityContractAddress;
     
     uint256 public availableForWithdrawal;
 
@@ -23,10 +23,10 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
-    function StreamityEscrow() public {
+    function StreamityEscrow(address streamityContract) public {
         owner = msg.sender; 
         requestCancellationTime = 2 hours;
-        streamityContractAddress = TokenERC20(0x0); // TODO
+        streamityContractAddress = TokenERC20(streamityContract); // TODO Stm contract adrress
     }
 
     struct Deal {
@@ -38,7 +38,6 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         uint256 commission;
         bool isAltCoin;
     }
-
 
     event StartDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
     event ApproveDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
@@ -63,7 +62,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     {
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, _value, _commission);
         verifyDeal(_hashDeal, _sign);
-        bool result = TokenERC20(streamityContractAddress).transferFrom(msg.sender, address(this), _value);
+        bool result = streamityContractAddress.transferFrom(msg.sender, address(this), _value);
         require(result == true);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, _value, true);
     }
@@ -207,6 +206,12 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         uint256 _totalComission = _commission; 
         TokenERC20(_contract).transfer(_to, _value.sub(_totalComission));
         return true;
+    }
+
+    function setStreamityContractAddress(address newAddress) 
+    external onlyOwner 
+    {
+        streamityContractAddress = TokenERC20(newAddress);
     }
 	
 }
