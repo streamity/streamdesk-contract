@@ -51,7 +51,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         require(msg.value > 0);
         require(msg.value == _value);
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, msg.value, _commission);
-        require(_hashDeal.recover(_sign) == owner);
+        verifyDeal(_hashDeal, _sign);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value, false);
     }
 	
