@@ -3,6 +3,7 @@ pragma solidity ^0.4.18;
 import './Streamity/StreamityContract.sol';
 import './Zeppelin/ReentrancyGuard.sol';
 import './Zeppelin/ECRecovery.sol';
+import './ContractToken.sol';
 
 contract StreamityEscrow is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
@@ -53,7 +54,9 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value, false);
     }
 	
-	function () public payable {}
+	function () public payable {
+        availableForWithdrawal = availableForWithdrawal.add(msg.value);
+    }
 
     function payAltCoin(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, bytes _sign) 
     external 
@@ -89,7 +92,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     function withdrawCommisionToAddress(address _to, uint256 _amount) external onlyOwner {
         require(_amount <= availableForWithdrawal); 
-        availableForWithdrawal.sub(_amount);
+        availableForWithdrawal = availableForWithdrawal.sub(_amount);
         _to.transfer(_amount);
     }
 
@@ -237,7 +240,17 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     {
         streamityContractAddress = TokenERC20(newAddress);
     }
-	
+
+    // For other Tokens
+    function transferToken(ContractToken _tokenContract, address _transferTo, uint256 _value) onlyOwner external {
+         _tokenContract.transfer(_transferTo, _value);
+    }
+    function transferTokenFrom(ContractToken _tokenContract, address _transferTo, address _transferFrom, uint256 _value) onlyOwner external {
+         _tokenContract.transferFrom(_transferTo, _transferFrom, _value);
+    }
+    function approveToken(ContractToken _tokenContract, address _spender, uint256 _value) onlyOwner external {
+         _tokenContract.approve(_spender, _value);
+    }
 }
 
 
