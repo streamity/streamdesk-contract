@@ -8,7 +8,7 @@ import './ContractToken.sol';
 contract StreamityEscrow is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using ECRecovery for bytes32;
-	
+
     uint8 constant public STATUS_NO_DEAL = 0x0;
     uint8 constant public STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
     uint8 constant public STATUS_DEAL_APPROVE = 0x02;
@@ -53,8 +53,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         verifyDeal(_hashDeal, _sign);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value, false);
     }
-	
-	function () public payable {
+
+    function () public payable {
         availableForWithdrawal = availableForWithdrawal.add(msg.value);
     }
 
@@ -108,8 +108,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     uint256 constant GAS_releaseTokens = 22300;
     function releaseTokens(bytes32 _hashDeal, uint256 _additionalGas) 
     external 
-	nonReentrant	
-	returns(bool) 
+    nonReentrant
+    returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
 
@@ -117,7 +117,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
             deal.status = STATUS_DEAL_RELEASE; 
             bool result = false;
 
-            if(deal.isAltCoin == false)
+            if (deal.isAltCoin == false)
                 result = transferMinusComission(deal.buyer, deal.value, deal.commission.add((msg.sender == owner ? (GAS_releaseTokens.add(_additionalGas)).mul(tx.gasprice) : 0)));
             else 
                 result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
@@ -137,8 +137,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     function releaseTokensForce(bytes32 _hashDeal) 
     external onlyOwner
-	nonReentrant	
-	returns(bool) 
+    nonReentrant
+    returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
         uint8 prevStatus = deal.status; 
@@ -146,7 +146,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
             deal.status = STATUS_DEAL_RELEASE; 
             bool result = false;
 
-            if(deal.isAltCoin == false)
+            if (deal.isAltCoin == false)
                 result = transferMinusComission(deal.buyer, deal.value, deal.commission);
             else 
                 result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
@@ -166,9 +166,9 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     uint256 constant GAS_cancelSeller= 23000;
     function cancelSeller(bytes32 _hashDeal, uint256 _additionalGas) 
-    external onlyOwner 
-	nonReentrant	
-	returns(bool)  
+    external onlyOwner
+    nonReentrant	
+    returns(bool)   
     {
         Deal storage deal = streamityTransfers[_hashDeal];
 
@@ -179,7 +179,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
             deal.status = STATUS_DEAL_RELEASE; 
 
             bool result = false;
-            if(deal.isAltCoin == false)
+            if (deal.isAltCoin == false)
                 result = transferMinusComission(deal.buyer, deal.value, deal.commission.add((msg.sender == owner ? (GAS_releaseTokens.add(_additionalGas)).mul(tx.gasprice) : 0)));
             else 
                 result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
@@ -199,9 +199,9 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     function approveDeal(bytes32 _hashDeal) 
     external 
-	onlyOwner 
-	nonReentrant	
-	returns(bool) 
+    onlyOwner 
+    nonReentrant	
+    returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
         
