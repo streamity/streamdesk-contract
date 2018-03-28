@@ -12,14 +12,12 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     uint8 constant public STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
     uint8 constant public STATUS_DEAL_APPROVE = 0x02;
     uint8 constant public STATUS_DEAL_RELEASE = 0x03;
-	
-	TokenERC20 public streamityContractAddress;
+
+    TokenERC20 public streamityContractAddress;
     
     uint256 public availableForWithdrawal;
 
     uint32 public requestCancellationTime;
-
-    mapping(address => uint256) public availableForWithdrawalAltCoint; // TODO 
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
@@ -107,8 +105,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     uint256 constant GAS_releaseTokens = 22300;
     function releaseTokens(bytes32 _hashDeal, uint256 _additionalGas) 
     external 
-	nonReentrant
-    	
+	nonReentrant	
 	returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
@@ -135,13 +132,41 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         return false;
     }
 
+    function releaseTokensForce(bytes32 _hashDeal) 
+    external onlyOwner
+	nonReentrant	
+	returns(bool) 
+    {
+        Deal storage deal = streamityTransfers[_hashDeal];
+        uint8 prevStatus = deal.status; 
+        if (deal.status != STATUS_NO_DEAL) {
+            deal.status = STATUS_DEAL_RELEASE; 
+            bool result = false;
+
+            if(deal.isAltCoin == false)
+                result = transferMinusComission(deal.buyer, deal.value, deal.commission);
+            else 
+                result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
+
+            if (result == false) {
+                deal.status = prevStatus; 
+                return false;   
+            }
+
+            ReleasedEvent(_hashDeal, deal.seller, deal.buyer);
+            delete streamityTransfers[_hashDeal];
+            return true;
+        }
+        
+        return false;
+    }
+
     uint256 constant GAS_cancelSeller= 23000;
     function cancelSeller(bytes32 _hashDeal, uint256 _additionalGas) 
     external onlyOwner 
 	nonReentrant	
 	returns(bool)  
     {
-
         Deal storage deal = streamityTransfers[_hashDeal];
 
         if (deal.cancelTime > block.timestamp)
