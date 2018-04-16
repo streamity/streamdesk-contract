@@ -22,10 +22,9 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
-    function StreamityEscrow(address streamityContract) public {
+    function StreamityEscrow() public {
         owner = msg.sender; 
         requestCancellationTime = 2 hours;
-        streamityContractAddress = TokenERC20(streamityContract); // TODO Stm contract adrress
     }
 
     struct Deal {
@@ -49,6 +48,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     {
         require(msg.value > 0);
         require(msg.value == _value);
+        require(msg.value > _commission);
         bytes32 _hashDeal = keccak256(_tradeID, _seller, _buyer, msg.value, _commission);
         verifyDeal(_hashDeal, _sign);
         startDealForUser(_hashDeal, _seller, _buyer, _commission, msg.value, false);
@@ -84,8 +84,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         userDeals.cancelTime = block.timestamp.add(requestCancellationTime); 
         userDeals.status = STATUS_DEAL_WAIT_CONFIRMATION;
         userDeals.isAltCoin = isAltCoin;
-        
-        StartDealEvent(_hashDeal, _seller, _buyer);
+        emit StartDealEvent(_hashDeal, _seller, _buyer);
         
         return _hashDeal;
     }
@@ -127,7 +126,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
                 return false;   
             }
 
-            ReleasedEvent(_hashDeal, deal.seller, deal.buyer);
+            emit ReleasedEvent(_hashDeal, deal.seller, deal.buyer);
             delete streamityTransfers[_hashDeal];
             return true;
         }
@@ -156,7 +155,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
                 return false;   
             }
 
-            ReleasedEvent(_hashDeal, deal.seller, deal.buyer);
+            emit ReleasedEvent(_hashDeal, deal.seller, deal.buyer);
             delete streamityTransfers[_hashDeal];
             return true;
         }
@@ -189,7 +188,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
                 return false;   
             }
 
-            SellerCancellEvent(_hashDeal, deal.seller, deal.buyer);
+            emit SellerCancellEvent(_hashDeal, deal.seller, deal.buyer);
             delete streamityTransfers[_hashDeal];
             return true;
         }
@@ -207,7 +206,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         
         if (deal.status == STATUS_DEAL_WAIT_CONFIRMATION) {
             deal.status = STATUS_DEAL_APPROVE;
-            ApproveDealEvent(_hashDeal, deal.seller, deal.buyer);
+            emit ApproveDealEvent(_hashDeal, deal.seller, deal.buyer);
             return true;
         }
         
@@ -219,7 +218,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     {
         uint256 _totalComission = _commission; 
         
-        require(availableForWithdrawal.add(_totalComission) > availableForWithdrawal); // Check for overflows
+        require(availableForWithdrawal.add(_totalComission) >= availableForWithdrawal); // Check for overflows
 
         availableForWithdrawal = availableForWithdrawal.add(_totalComission); 
 
