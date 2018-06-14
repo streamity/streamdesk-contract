@@ -7,55 +7,69 @@ var Web3Utils = require('web3-utils');
 var StreamityEscrow = artifacts.require("../contract/StreamityEscrow.sol");
 var StreamityContract = artifacts.require("../contract/Streamity/StreamityContract.sol");
 var privateKeyOwner = "0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3";
-
 var STATUS_NO_DEAL = 0x0;
 var STATUS_DEAL_WAIT_CONFIRMATION = 0x01;
 var STATUS_DEAL_APPROVE = 0x02;
 var STATUS_DEAL_RELEASE = 0x03;
 var STATUS_DEAL_DISPUT = 0x04;
 
-contract('2th stage tests', async (accounts) => {
-	var tradeID = Web3Utils.randomHex(32);
-	var ownerContract = accounts[0];
-	var buyer = accounts[2];
-	var seller = accounts[1];
+contract('3th stage tests', async (accounts) => {
+    var tradeID = Web3Utils.randomHex(32);
+    var ownerContract = accounts[0];
+    var buyer = accounts[2];
+    var seller = accounts[1];
 
-	var value = 1000;
-	var commission = 1;
-	var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
-	var signature = getSignatureSig(privateKeyOwner, hash);
+    var value_eth = "1"; // transfer value
+    var value = Web3Utils.toWei(value_eth, 'ether'); // 1 eth
+    var commission = 0; // 0 %
+    var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
+    var signature = getSignatureSig(privateKeyOwner, hash);
 
-	it("Alt coin transfer test", async () => {
-	  var UNIX_TIMESTAMP = Math.round(new Date().getTime() / 1000);
-	  let instance_stm = await StreamityContract.deployed();
-	  let instance_escrow = await StreamityEscrow.deployed();
-	  
-	  await instance_stm.startCrowd(5000, UNIX_TIMESTAMP, 5, 0, 0);
-	  await instance_stm.transferWeb3js(seller, 3000, {from: ownerContract});
-      await instance_stm.approve(instance_escrow.address, value, {from: seller});
 
-      await instance_escrow.setStreamityContractAddress( instance_stm.address, {from: ownerContract})
-	   
-	  await instance_escrow.payAltCoin(tradeID, seller, buyer, value, commission, signature, {
-                from: seller
-            }); 
-			
-	  let status = await instance_escrow.getStatusDeal(hash);
-     
-      await instance_escrow.approveDeal(hash, {from: ownerContract});
-      
-      let stm_adress = await instance_escrow.streamityContractAddress.call();
-      assert.equal(instance_stm.address, stm_adress, "Stm contrat must be set");
+    it("Force release", async () => {
 
-      let balance_contract = await instance_stm.balanceOf.call(instance_escrow.address);
-      
-      assert.equal(value, balance_contract.toNumber(), "Contract must have some tokents");
 
-	  await instance_escrow.releaseTokens(hash, 0, {from: ownerContract});
-	  let balance_buyer = await instance_stm.balanceOf.call(buyer);
-	  
-	  assert.equal(value-commission, balance_buyer.toNumber(), "Stm coin not transfers to buyer");
-	});
+        let instance_escrow = await StreamityEscrow.deployed();
+
+        await instance_escrow.pay(tradeID, seller, buyer, value, commission, signature, {
+            value: value,
+            from: seller
+        });
+
+        let balance_buyer_old = web3.eth.getBalance(buyer);
+        await instance_escrow.releaseTokensForce(hash, {
+            from: ownerContract
+        });
+        let balance_buyer = web3.eth.getBalance(buyer);
+        assert.equal(balance_buyer_old.add(value).toString(), balance_buyer.toString(), "ethers not transfers to buyer");
+    });
+
+    it("Cancel deal", async () => {
+
+
+        let instance_escrow = await StreamityEscrow.deployed();
+
+        await instance_escrow.pay(tradeID, seller, buyer, value, commission, signature, {
+            value: value,
+            from: seller
+        });
+
+
+
+        let balance_seller_old  = web3.eth.getBalance(seller);
+        let balance_buyer_old = web3.eth.getBalance(buyer);
+        await instance_escrow.cancelSeller(hash, 0, {
+            from: ownerContract
+        });
+
+        let balance_buyer = web3.eth.getBalance(buyer);
+        let balance_seller = web3.eth.getBalance(buyer);
+        assert.equal(balance_buyer_old.toString(), balance_buyer.toString(), "Buyer must have same ethers like before deal");
+        
+        assert.isAbove(balance_seller.toNumber(), balance_seller_old.toNumber(), "Return ethers to seller");
+
+       
+    });
 
 });
 
@@ -76,14 +90,14 @@ function getSignature(privateKey, message) {
 
 // sign
 function getSignatureSig(privateKey, message) {
-    
-        var signingKey = new SigningKey(privateKey);
-        var sig = signingKey.signDigest(message);
-    
-        signature = (hexPad(sig.r, 32) + hexPad(sig.s, 32).substring(2) + (sig.recoveryParam ? '1c' : '1b'));
-    
-        return signature;
-    }
+
+    var signingKey = new SigningKey(privateKey);
+    var sig = signingKey.signDigest(message);
+
+    signature = (hexPad(sig.r, 32) + hexPad(sig.s, 32).substring(2) + (sig.recoveryParam ? '1c' : '1b'));
+
+    return signature;
+}
 
 function hexPad(value, length) {
     while (value.length < 2 * length + 2) {

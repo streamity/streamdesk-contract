@@ -69,7 +69,6 @@ contract('StreamityEscrow', function (accounts) {
                     break;
                 }
             }
-
             if (result.tx === undefined)
                 throw "result.tx is undefined";
 
@@ -79,19 +78,9 @@ contract('StreamityEscrow', function (accounts) {
         });
     });
 
-    it("Try cancel deal before 2 hours", function () {
-        return StreamityEscrow.deployed().then(function (instance) {
-            stm = instance;
-            return stm.cancelSeller.call(hash, 0, {from : ownerContract});
-        }).then(function (result) {
-            assert.equal(false, result, "Status deal is not wait");
-        });
-    });
-
     it("Try Release unprove tokens", function () {
       return StreamityEscrow.deployed().then(function (instance) {
           stm = instance;
-
           return stm.releaseTokens(hash, 0, {from: buyer});
       }).then(function (result) {
          return stm.releaseTokens(hash, 0, {from: seller});
