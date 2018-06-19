@@ -644,9 +644,10 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
-    function StreamityEscrow() public {
+    function StreamityEscrow(address streamityContract) public {
         owner = msg.sender; 
         requestCancelationTime = 2 hours;
+        streamityContractAddress = TokenERC20(streamityContract);
     }
 
     struct Deal {
