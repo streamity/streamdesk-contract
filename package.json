@@ -6,18 +6,11 @@
   "directories": {
     "test": "test"
   },
-  "scripts": {
-    "build-escrow": "sol-merger \"./contracts/StreamityEscrow.sol\" ./build"
-  },
+  "scripts": {},
   "author": "Nick Stepanov",
   "dependencies": {
     "ethers": "^2.2.6",
     "secp256k1": "^3.5.0",
-    "solc": "^0.4.22",
-    "web3": "github:ethereum/web3.js"
-  },
-  "devDependencies": {
-    "sol-merger": "^0.1.2",
-    "web3-utils": "^1.0.0-beta.34"
+    "web3": "^1.0.0-beta.30"
   }
 }

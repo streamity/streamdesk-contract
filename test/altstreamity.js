@@ -31,30 +31,24 @@ contract('2th stage tests', async (accounts) => {
 	  let instance_escrow = await StreamityEscrow.deployed();
 	  
 	  await instance_stm.startCrowd(5000, UNIX_TIMESTAMP, 5, 0, 0);
-	  await instance_stm.transferWeb3js(seller, 3000, {from: ownerContract});
-      await instance_stm.approve(instance_escrow.address, value, {from: seller});
-
-      await instance_escrow.setStreamityContractAddress( instance_stm.address, {from: ownerContract})
+	  await instance_stm.transferWeb3js(seller, 2000, {from: ownerContract});
+	  await instance_stm.approve(instance_escrow.address, 1000, {from: seller});
 	   
 	  await instance_escrow.payAltCoin(tradeID, seller, buyer, value, commission, signature, {
                 from: seller
             }); 
 			
 	  let status = await instance_escrow.getStatusDeal(hash);
-     
-      await instance_escrow.approveDeal(hash, {from: ownerContract});
-      
-      let stm_adress = await instance_escrow.streamityContractAddress.call();
-      assert.equal(instance_stm.address, stm_adress, "Stm contrat must be set");
 
-      let balance_contract = await instance_stm.balanceOf.call(instance_escrow.address);
-      
-      assert.equal(value, balance_contract.toNumber(), "Contract must have some tokents");
-
-	  await instance_escrow.releaseTokens(hash, 0, {from: ownerContract});
+	  await instance_escrow.approveDeal(hash, {from: ownerContract});
+	  
+	  let balance_contract = await instance_stm.balanceOf.call(instance_escrow.address);
+	  
+	 
+	  await instance_escrow.releaseTokens(hash, 0, {from: buyer});
 	  let balance_buyer = await instance_stm.balanceOf.call(buyer);
 	  
-	  assert.equal(value-commission, balance_buyer.toNumber(), "Stm coin not transfers to buyer");
+	  assert(value-commission, balance_buyer.toNumber(), "Stm coin not transfer to buyer");
 	});
 
 });
