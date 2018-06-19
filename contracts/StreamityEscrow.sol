@@ -18,13 +18,13 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     
     uint256 public availableForWithdrawal;
 
-    uint32 public requestCancellationTime;
+    uint32 public requestCancelationTime;
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
     function StreamityEscrow() public {
         owner = msg.sender; 
-        requestCancellationTime = 2 hours;
+        requestCancelationTime = 2 hours;
     }
 
     struct Deal {
@@ -40,7 +40,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     event StartDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
     event ApproveDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
     event ReleasedEvent(bytes32 _hashDeal, address _seller, address _buyer);
-    event SellerCancellEvent(bytes32 _hashDeal, address _seller, address _buyer);
+    event SellerCancelEvent(bytes32 _hashDeal, address _seller, address _buyer);
     
     function pay(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, bytes _sign) 
     external 
@@ -81,7 +81,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         userDeals.buyer = _buyer;
         userDeals.value = _value; 
         userDeals.commission = _commission; 
-        userDeals.cancelTime = block.timestamp.add(requestCancellationTime); 
+        userDeals.cancelTime = block.timestamp.add(requestCancelationTime); 
         userDeals.status = STATUS_DEAL_WAIT_CONFIRMATION;
         userDeals.isAltCoin = isAltCoin;
         emit StartDealEvent(_hashDeal, _seller, _buyer);
@@ -96,7 +96,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     }
 
     function withdrawCommisionToAddressAltCoin(address _to, uint256 _amount) external onlyOwner {
-        
+        streamityContractAddress.transfer(_to, _amount);
     }
 
     function getStatusDeal(bytes32 _hashDeal) external view returns (uint8) {
@@ -104,7 +104,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     }
     
     // _additionalComission is wei
-    uint256 constant GAS_releaseTokens = 22300;
+    uint256 constant GAS_releaseTokens = 60000;
     function releaseTokens(bytes32 _hashDeal, uint256 _additionalGas) 
     external 
     nonReentrant
@@ -163,7 +163,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         return false;
     }
 
-    uint256 constant GAS_cancelSeller= 23000;
+    uint256 constant GAS_cancelSeller = 30000;
     function cancelSeller(bytes32 _hashDeal, uint256 _additionalGas) 
     external onlyOwner
     nonReentrant	
@@ -179,16 +179,16 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
             bool result = false;
             if (deal.isAltCoin == false)
-                result = transferMinusComission(deal.buyer, deal.value, deal.commission.add((msg.sender == owner ? (GAS_releaseTokens.add(_additionalGas)).mul(tx.gasprice) : 0)));
+                result = transferMinusComission(deal.seller, deal.value, GAS_cancelSeller.add(_additionalGas).mul(tx.gasprice));
             else 
-                result = transferMinusComissionAltCoin(streamityContractAddress, deal.buyer, deal.value, deal.commission);
+                result = transferMinusComissionAltCoin(streamityContractAddress, deal.seller, deal.value, _additionalGas);
 
             if (result == false) {
                 deal.status = STATUS_DEAL_WAIT_CONFIRMATION; 
                 return false;   
             }
 
-            emit SellerCancellEvent(_hashDeal, deal.seller, deal.buyer);
+            emit SellerCancelEvent(_hashDeal, deal.seller, deal.buyer);
             delete streamityTransfers[_hashDeal];
             return true;
         }
@@ -242,13 +242,13 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
 
     // For other Tokens
     function transferToken(ContractToken _tokenContract, address _transferTo, uint256 _value) onlyOwner external {
-         _tokenContract.transfer(_transferTo, _value);
+        _tokenContract.transfer(_transferTo, _value);
     }
     function transferTokenFrom(ContractToken _tokenContract, address _transferTo, address _transferFrom, uint256 _value) onlyOwner external {
-         _tokenContract.transferFrom(_transferTo, _transferFrom, _value);
+        _tokenContract.transferFrom(_transferTo, _transferFrom, _value);
     }
     function approveToken(ContractToken _tokenContract, address _spender, uint256 _value) onlyOwner external {
-         _tokenContract.approve(_spender, _value);
+        _tokenContract.approve(_spender, _value);
     }
 }
 

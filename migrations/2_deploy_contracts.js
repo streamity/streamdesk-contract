@@ -6,6 +6,6 @@ module.exports = function(deployer) {
   deployer.deploy(ECRecovery);
   deployer.link(ECRecovery, StreamityEscrow);
 	deployer.deploy(Stm).then(function() {
-	  return deployer.deploy(StreamityEscrow, Stm.address);
+	  return deployer.deploy(StreamityEscrow);
 	});
 };
