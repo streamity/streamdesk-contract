@@ -1,9 +1,8 @@
 pragma solidity ^0.4.18;
 
-import './Streamity/StreamityContract.sol';
-import './Zeppelin/ReentrancyGuard.sol';
-import './Zeppelin/ECRecovery.sol';
-import './ContractToken.sol';
+import "./Zeppelin/TokenERC20.sol";
+import "./Zeppelin/ReentrancyGuard.sol";
+import "./Zeppelin/ECRecovery.sol";
 
 contract StreamityEscrow is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
@@ -17,13 +16,14 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     TokenERC20 public streamityContractAddress;
     
     uint256 public availableForWithdrawal;
+    uint256 public availableForWithdrawalSTM;
 
     uint32 public requestCancelationTime;
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
     function StreamityEscrow(address streamityContract) public {
-        owner = msg.sender; 
+        require(streamityContract != 0x0); 
         requestCancelationTime = 2 hours;
         streamityContractAddress = TokenERC20(streamityContract);
     }
@@ -97,6 +97,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     }
 
     function withdrawCommisionToAddressAltCoin(address _to, uint256 _amount) external onlyOwner {
+        require(_amount <= availableForWithdrawalSTM); 
+        availableForWithdrawalSTM = availableForWithdrawalSTM.sub(_amount);
         streamityContractAddress.transfer(_to, _amount);
     }
 
@@ -218,6 +220,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
+		
+        require(_value >= _totalComission);
         
         require(availableForWithdrawal.add(_totalComission) >= availableForWithdrawal); // Check for overflows
 
@@ -231,6 +235,13 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
+		
+        require(_value >= _totalComission);
+		
+        require(availableForWithdrawalSTM.add(_totalComission) >= availableForWithdrawalSTM); // Check for overflows
+
+        availableForWithdrawalSTM = availableForWithdrawalSTM.add(_totalComission); 
+		
         _contract.transfer(_to, _value.sub(_totalComission));
         return true;
     }
@@ -242,13 +253,13 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     }
 
     // For other Tokens
-    function transferToken(ContractToken _tokenContract, address _transferTo, uint256 _value) onlyOwner external {
+    function transferToken(TokenERC20 _tokenContract, address _transferTo, uint256 _value) onlyOwner external {
         _tokenContract.transfer(_transferTo, _value);
     }
-    function transferTokenFrom(ContractToken _tokenContract, address _transferTo, address _transferFrom, uint256 _value) onlyOwner external {
+    function transferTokenFrom(TokenERC20 _tokenContract, address _transferTo, address _transferFrom, uint256 _value) onlyOwner external {
         _tokenContract.transferFrom(_transferTo, _transferFrom, _value);
     }
-    function approveToken(ContractToken _tokenContract, address _spender, uint256 _value) onlyOwner external {
+    function approveToken(TokenERC20 _tokenContract, address _spender, uint256 _value) onlyOwner external {
         _tokenContract.approve(_spender, _value);
     }
 }

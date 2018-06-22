@@ -28,7 +28,6 @@ contract('3th stage tests', async (accounts) => {
 
     it("Force release", async () => {
 
-
         let instance_escrow = await StreamityEscrow.deployed();
 
         await instance_escrow.pay(tradeID, seller, buyer, value, commission, signature, {
@@ -42,6 +41,52 @@ contract('3th stage tests', async (accounts) => {
         });
         let balance_buyer = web3.eth.getBalance(buyer);
         assert.equal(balance_buyer_old.add(value).toString(), balance_buyer.toString(), "ethers not transfers to buyer");
+		return;
+    });
+	
+	
+	it("Cancellation before two hours", async () => {
+
+		var tradeID = Web3Utils.randomHex(32);
+		var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
+		var signature = getSignatureSig(privateKeyOwner, hash);
+        let instance_escrow = await StreamityEscrow.deployed();
+
+        await instance_escrow.pay(tradeID, seller, buyer, value, commission, signature, {
+            value: value,
+            from: seller
+        });
+
+        let balance_seller_old = web3.eth.getBalance(seller);
+		
+        await instance_escrow.cancelSeller(hash, 0, {
+            from: ownerContract
+        });
+		
+        let balance_seller = web3.eth.getBalance(seller);
+        assert.equal(balance_seller.toNumber(), balance_seller_old.toNumber(), "current balance seller must be like old balance");
+		
+    });
+	
+	it("Cancel deal", async () => {
+		
+		var tradeID = Web3Utils.randomHex(32);
+		var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
+		var signature = getSignatureSig(privateKeyOwner, hash);
+		let instance_escrow = await StreamityEscrow.deployed();
+        await instance_escrow.pay(tradeID, seller, buyer, value, commission, signature, {
+            value: value,
+            from: seller
+        });
+
+        let balance_seller_old = web3.eth.getBalance(seller);
+		await web3.currentProvider.send({jsonrpc: "2.0", method: "evm_increaseTime", params: [10000], id: 0});
+        await instance_escrow.cancelSeller(hash, 0, {
+            from: ownerContract
+        });
+		
+        let balance_seller = web3.eth.getBalance(seller);
+        assert.isAbove(balance_seller.toNumber(), balance_seller_old.toNumber(), "current balance seller must be above than old balance");
 		return;
     });
 

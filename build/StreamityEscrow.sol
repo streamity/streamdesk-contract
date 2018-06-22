@@ -1,43 +1,49 @@
 pragma solidity ^0.4.18;
 
-library SafeMath
-{
-    function mul(uint256 a, uint256 b) internal pure
-        returns (uint256)
-    {
-        uint256 c = a * b;
+/**
+ * @title SafeMath
+ * @dev Math operations with safety checks that throw on error
+ */
+library SafeMath {
 
-        assert(a == 0 || c / a == b);
-
-        return c;
+  /**
+  * @dev Multiplies two numbers, throws on overflow.
+  */
+  function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+    if (a == 0) {
+      return 0;
     }
+    uint256 c = a * b;
+    assert(c / a == b);
+    return c;
+  }
 
-    function div(uint256 a, uint256 b) internal pure
-        returns (uint256)
-    {
-        // assert(b > 0); // Solidity automatically throws when dividing by 0
-        uint256 c = a / b;
-        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
-        return c;
-    }
+  /**
+  * @dev Integer division of two numbers, truncating the quotient.
+  */
+  function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
+    uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+    return c;
+  }
 
-    function sub(uint256 a, uint256 b) internal pure
-        returns (uint256)
-    {
-        assert(b <= a);
+  /**
+  * @dev Substracts two numbers, throws on overflow (i.e. if subtrahend is greater than minuend).
+  */
+  function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+    assert(b <= a);
+    return a - b;
+  }
 
-        return a - b;
-    }
-
-    function add(uint256 a, uint256 b) internal pure
-        returns (uint256)
-    {
-        uint256 c = a + b;
-
-        assert(c >= a);
-
-        return c;
-    }
+  /**
+  * @dev Adds two numbers, throws on overflow.
+  */
+  function add(uint256 a, uint256 b) internal pure returns (uint256) {
+    uint256 c = a + b;
+    assert(c >= a);
+    return c;
+  }
 }
 
 /**
@@ -45,37 +51,39 @@ library SafeMath
  * @dev The Ownable contract has an owner address, and provides basic authorization control
  * functions, this simplifies the implementation of "user permissions".
  */
-contract Ownable
-{
-    address owner;
+contract Ownable {
+  address public owner;
 
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
-     * @dev The Ownable constructor sets the original `owner` of the contract to the sender
-     * account.
-     */
-    function Ownable() public {
-        owner = msg.sender;
-    }
+  event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    /**
-     * @dev Throws if called by any account other than the owner.
-     */
-    modifier onlyOwner() {
-        require(msg.sender == owner);
-        _;
-    }
 
-    /**
-     * @dev Allows the current owner to transfer control of the contract to a newOwner.
-     * @param newOwner The address to transfer ownership to.
-     */
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0));
-        OwnershipTransferred(owner, newOwner);
-        owner = newOwner;
-    }
+  /**
+   * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+   * account.
+   */
+  function Ownable() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Throws if called by any account other than the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner);
+    _;
+  }
+
+  /**
+   * @dev Allows the current owner to transfer control of the contract to a newOwner.
+   * @param newOwner The address to transfer ownership to.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0));
+    OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+
 }
 
 interface tokenRecipient
@@ -298,254 +306,6 @@ contract TokenERC20 is Ownable
     }
 }
 
-contract ERC20Extending is TokenERC20
-{
-    using SafeMath for uint;
-
-    /**
-    * Function for transfer ethereum from contract to any address
-    *
-    * @param _to - address of the recipient
-    * @param amount - ethereum
-    */
-    function transferEthFromContract(address _to, uint256 amount) public onlyOwner
-    {
-        _to.transfer(amount);
-    }
-
-    /**
-    * Function for transfer tokens from contract to any address
-    *
-    */
-    function transferTokensFromContract(address _to, uint256 _value) public onlyOwner
-    {
-        avaliableSupply = avaliableSupply.sub(_value);
-        _transfer(this, _to, _value);
-    }
-}
-
-contract Pauseble is TokenERC20
-{
-    event EPause();
-    event EUnpause();
-
-    bool public paused = true;
-    uint public startIcoDate = 0;
-
-    modifier whenNotPaused()
-    {
-        require(!paused);
-        _;
-    }
-
-    modifier whenPaused()
-    {
-        require(paused);
-        _;
-    }
-
-    function pause() public onlyOwner
-    {
-        paused = true;
-        EPause();
-    }
-
-    function pauseInternal() internal
-    {
-        paused = true;
-        EPause();
-    }
-
-    function unpause() public onlyOwner
-    {
-        paused = false;
-        EUnpause();
-    }
-
-    function unpauseInternal() internal
-    {
-        paused = false;
-        EUnpause();
-    }
-}
-
-contract StreamityCrowdsale is Pauseble
-{
-    using SafeMath for uint;
-
-    uint public stage = 0;
-
-    event CrowdSaleFinished(string info);
-
-    struct Ico {
-        uint256 tokens;             // Tokens in crowdsale
-        uint startDate;             // Date when crowsale will be starting, after its starting that property will be the 0
-        uint endDate;               // Date when crowdsale will be stop
-        uint8 discount;             // Discount
-        uint8 discountFirstDayICO;  // Discount. Only for first stage ico
-    }
-
-    Ico public ICO;
-
-    /**
-    * Expanding of the functionality
-    *
-    * @param _numerator - Numerator - value (10000)
-    * @param _denominator - Denominator - value (10000)
-    *
-    * example: price 1000 tokens by 1 ether = changeRate(1, 1000)
-    */
-    function changeRate(uint256 _numerator, uint256 _denominator) public onlyOwner
-        returns (bool success)
-    {
-        if (_numerator == 0) _numerator = 1;
-        if (_denominator == 0) _denominator = 1;
-
-        buyPrice = (_numerator.mul(DEC)).div(_denominator);
-
-        return true;
-    }
-
-    /*
-    * Function show in contract what is now
-    *
-    */
-    function crowdSaleStatus() internal constant
-        returns (string)
-    {
-        if (1 == stage) {
-            return "Pre-ICO";
-        } else if(2 == stage) {
-            return "ICO first stage";
-        } else if (3 == stage) {
-            return "ICO second stage";
-        } else if (4 >= stage) {
-            return "feature stage";
-        }
-
-        return "there is no stage at present";
-    }
-
-    /*
-    * Function for selling tokens in crowd time.
-    *
-    */
-    function sell(address _investor, uint256 amount) internal
-    {
-        uint256 _amount = (amount.mul(DEC)).div(buyPrice);
-
-        if (1 == stage) {
-            _amount = _amount.add(withDiscount(_amount, ICO.discount));
-        }
-        else if (2 == stage)
-        {
-            if (now <= ICO.startDate + 1 days)
-            {
-                  if (0 == ICO.discountFirstDayICO) {
-                      ICO.discountFirstDayICO = 20;
-                  }
-
-                  _amount = _amount.add(withDiscount(_amount, ICO.discountFirstDayICO));
-            } else {
-                _amount = _amount.add(withDiscount(_amount, ICO.discount));
-            }
-        } else if (3 == stage) {
-            _amount = _amount.add(withDiscount(_amount, ICO.discount));
-        }
-
-        if (ICO.tokens < _amount)
-        {
-            CrowdSaleFinished(crowdSaleStatus());
-            pauseInternal();
-
-            revert();
-        }
-
-        ICO.tokens = ICO.tokens.sub(_amount);
-        avaliableSupply = avaliableSupply.sub(_amount);
-
-        _transfer(this, _investor, _amount);
-    }
-
-    /*
-    * Function for start crowdsale (any)
-    *
-    * @param _tokens - How much tokens will have the crowdsale - amount humanlike value (10000)
-    * @param _startDate - When crowdsale will be start - unix timestamp (1512231703 )
-    * @param _endDate - When crowdsale will be end - humanlike value (7) same as 7 days
-    * @param _discount - Discount for the crowd - humanlive value (7) same as 7 %
-    * @param _discount - Discount for the crowds first day - humanlive value (7) same as 7 %
-    */
-    function startCrowd(uint256 _tokens, uint _startDate, uint _endDate, uint8 _discount, uint8 _discountFirstDayICO) public onlyOwner
-    {
-        require(_tokens * DEC <= avaliableSupply);  // require to set correct tokens value for crowd
-        startIcoDate = _startDate;
-        ICO = Ico (_tokens * DEC, _startDate, _startDate + _endDate * 1 days , _discount, _discountFirstDayICO);
-        stage = stage.add(1);
-        unpauseInternal();
-    }
-
-    /**
-    * Function for web3js, should be call when somebody will buy tokens from website. This function only delegator.
-    *
-    * @param _investor - address of investor (who payed)
-    * @param _amount - ethereum
-    */
-    function transferWeb3js(address _investor, uint256 _amount) external onlyOwner
-    {
-        sell(_investor, _amount);
-    }
-
-    /**
-    * Function for adding discount
-    *
-    */
-    function withDiscount(uint256 _amount, uint _percent) internal pure
-        returns (uint256)
-    {
-        return (_amount.mul(_percent)).div(100);
-    }
-}
-
-contract StreamityContract is ERC20Extending, StreamityCrowdsale
-{
-    using SafeMath for uint;
-
-    uint public weisRaised;  // how many weis was raised on crowdsale
-
-    /* Streamity tokens Constructor */
-    function StreamityContract() public TokenERC20(130000000, "Streamity", "STM") {} //change before send !!!
-
-    /**
-    * Function payments handler
-    *
-    */
-    function () public payable
-    {
-        assert(msg.value >= 1 ether / 10);
-        require(now >= ICO.startDate);
-
-        if (now >= ICO.endDate) {
-            pauseInternal();
-            CrowdSaleFinished(crowdSaleStatus());
-        }
-
-
-        if (0 != startIcoDate) {
-            if (now < startIcoDate) {
-                revert();
-            } else {
-                startIcoDate = 0;
-            }
-        }
-
-        if (paused == false) {
-            sell(msg.sender, msg.value);
-            weisRaised = weisRaised.add(msg.value);
-        }
-    }
-}
-
 /**
  * @title Helps contracts guard agains reentrancy attacks.
  * @author Remco Bloemen <remco@2π.com>
@@ -621,12 +381,6 @@ library ECRecovery {
 
 }
 
-contract ContractToken {
-    function transfer(address _to, uint _value) public returns (bool success);
-    function transferFrom(address _from, address _to, uint _value) public returns (bool success);
-    function approve(address _spender, uint _value) public returns (bool success);
-}
-
 contract StreamityEscrow is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using ECRecovery for bytes32;
@@ -639,13 +393,14 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     TokenERC20 public streamityContractAddress;
     
     uint256 public availableForWithdrawal;
+    uint256 public availableForWithdrawalSTM;
 
     uint32 public requestCancelationTime;
 
     mapping(bytes32 => Deal) public streamityTransfers;
 
     function StreamityEscrow(address streamityContract) public {
-        owner = msg.sender; 
+        require(streamityContract != 0x0); 
         requestCancelationTime = 2 hours;
         streamityContractAddress = TokenERC20(streamityContract);
     }
@@ -719,6 +474,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     }
 
     function withdrawCommisionToAddressAltCoin(address _to, uint256 _amount) external onlyOwner {
+        require(_amount <= availableForWithdrawalSTM); 
+        availableForWithdrawalSTM = availableForWithdrawalSTM.sub(_amount);
         streamityContractAddress.transfer(_to, _amount);
     }
 
@@ -840,6 +597,8 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
+		
+        require(_value >= _totalComission);
         
         require(availableForWithdrawal.add(_totalComission) >= availableForWithdrawal); // Check for overflows
 
@@ -853,6 +612,13 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     private returns(bool) 
     {
         uint256 _totalComission = _commission; 
+		
+        require(_value >= _totalComission);
+		
+        require(availableForWithdrawalSTM.add(_totalComission) >= availableForWithdrawalSTM); // Check for overflows
+
+        availableForWithdrawalSTM = availableForWithdrawalSTM.add(_totalComission); 
+		
         _contract.transfer(_to, _value.sub(_totalComission));
         return true;
     }
@@ -864,13 +630,13 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     }
 
     // For other Tokens
-    function transferToken(ContractToken _tokenContract, address _transferTo, uint256 _value) onlyOwner external {
+    function transferToken(TokenERC20 _tokenContract, address _transferTo, uint256 _value) onlyOwner external {
         _tokenContract.transfer(_transferTo, _value);
     }
-    function transferTokenFrom(ContractToken _tokenContract, address _transferTo, address _transferFrom, uint256 _value) onlyOwner external {
+    function transferTokenFrom(TokenERC20 _tokenContract, address _transferTo, address _transferFrom, uint256 _value) onlyOwner external {
         _tokenContract.transferFrom(_transferTo, _transferFrom, _value);
     }
-    function approveToken(ContractToken _tokenContract, address _spender, uint256 _value) onlyOwner external {
+    function approveToken(TokenERC20 _tokenContract, address _spender, uint256 _value) onlyOwner external {
         _tokenContract.approve(_spender, _value);
     }
 }
