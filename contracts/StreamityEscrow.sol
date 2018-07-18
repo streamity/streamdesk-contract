@@ -1,9 +1,9 @@
 pragma solidity ^0.4.18;
 
-import './Streamity/StreamityContract.sol';
-import './Zeppelin/ReentrancyGuard.sol';
-import './Zeppelin/ECRecovery.sol';
-import './ContractToken.sol';
+import "./Streamity/StreamityContract.sol";
+import "./Zeppelin/ReentrancyGuard.sol";
+import "./Zeppelin/ECRecovery.sol";
+import "./ContractToken.sol";
 
 contract StreamityEscrow is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
