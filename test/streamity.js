@@ -84,7 +84,7 @@ contract('StreamityEscrow', function (accounts) {
             stm = instance;
             return stm.cancelSeller.call(hash, 0, {from : ownerContract});
         }).then(function (result) {
-            assert.equal(false, result, "Status deal is not wait");
+            assert.equal(true, result, "Status deal is not wait");
         });
     });
 

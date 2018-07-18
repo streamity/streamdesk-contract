@@ -174,9 +174,6 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     {
         Deal storage deal = streamityTransfers[_hashDeal];
 
-        if (deal.cancelTime > block.timestamp)
-            return false;
-
         if (deal.status == STATUS_DEAL_WAIT_CONFIRMATION) {
             deal.status = STATUS_DEAL_RELEASE; 
 

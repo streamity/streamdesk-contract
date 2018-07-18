@@ -44,30 +44,6 @@ contract('3th stage tests', async (accounts) => {
 		return;
     });
 	
-	
-	it("Cancellation before two hours", async () => {
-
-		var tradeID = Web3Utils.randomHex(32);
-		var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
-		var signature = getSignatureSig(privateKeyOwner, hash);
-        let instance_escrow = await StreamityEscrow.deployed();
-
-        await instance_escrow.pay(tradeID, seller, buyer, value, commission, signature, {
-            value: value,
-            from: seller
-        });
-
-        let balance_seller_old = web3.eth.getBalance(seller);
-		
-        await instance_escrow.cancelSeller(hash, 0, {
-            from: ownerContract
-        });
-		
-        let balance_seller = web3.eth.getBalance(seller);
-        assert.equal(balance_seller.toNumber(), balance_seller_old.toNumber(), "current balance seller must be like old balance");
-		
-    });
-	
 	it("Cancel deal", async () => {
 		
 		var tradeID = Web3Utils.randomHex(32);
