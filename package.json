@@ -7,13 +7,15 @@
     "test": "test"
   },
   "scripts": {
-	"build-escrow": "sol-merger \"./contracts/StreamityEscrow.sol\" ./build"
+    "build-escrow": "sol-merger \"./contracts/StreamityEscrow.sol\" ./build"
   },
   "author": "Nick Stepanov",
   "dependencies": {
     "ethers": "^2.2.6",
     "secp256k1": "^3.5.0",
-    "web3": "^1.0.0-beta.30"
+    "solc": "^0.4.22",
+    "web3": "^1.0.0-beta2",
+    "web3-utils": "^1.0.0-beta.34"
   },
   "devDependencies": {
     "sol-merger": "^0.1.2"
