@@ -415,10 +415,10 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
         bool isAltCoin;
     }
 
-    event StartDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
-    event ApproveDealEvent(bytes32 _hashDeal, address _seller, address _buyer);
-    event ReleasedEvent(bytes32 _hashDeal, address _seller, address _buyer);
-    event SellerCancelEvent(bytes32 _hashDeal, address _seller, address _buyer);
+    event StartDealEvent(bytes32 indexed _hashDeal, address indexed _seller, address indexed _buyer);
+    event ApproveDealEvent(bytes32 indexed _hashDeal, address indexed _seller, address indexed _buyer);
+    event ReleasedEvent(bytes32 indexed _hashDeal, address indexed _seller, address indexed _buyer);
+    event SellerCancelEvent(bytes32 indexed _hashDeal, address indexed _seller, address indexed _buyer);
     
     function pay(bytes32 _tradeID, address _seller, address _buyer, uint256 _value, uint256 _commission, bytes _sign) 
     external 
