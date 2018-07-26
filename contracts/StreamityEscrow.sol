@@ -114,7 +114,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
-
+        require(deal.status == STATUS_DEAL_APPROVE);
         if (deal.status == STATUS_DEAL_APPROVE) {
             deal.status = STATUS_DEAL_RELEASE; 
             bool result = false;
@@ -143,6 +143,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
+        require(deal.status != STATUS_NO_DEAL);
         uint8 prevStatus = deal.status; 
         if (deal.status != STATUS_NO_DEAL) {
             deal.status = STATUS_DEAL_RELEASE; 
@@ -173,7 +174,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     returns(bool)   
     {
         Deal storage deal = streamityTransfers[_hashDeal];
-
+        require(deal.status == STATUS_DEAL_WAIT_CONFIRMATION);
         if (deal.status == STATUS_DEAL_WAIT_CONFIRMATION) {
             deal.status = STATUS_DEAL_RELEASE; 
 
@@ -203,7 +204,7 @@ contract StreamityEscrow is Ownable, ReentrancyGuard {
     returns(bool) 
     {
         Deal storage deal = streamityTransfers[_hashDeal];
-        
+        require(deal.status == STATUS_DEAL_WAIT_CONFIRMATION);
         if (deal.status == STATUS_DEAL_WAIT_CONFIRMATION) {
             deal.status = STATUS_DEAL_APPROVE;
             emit ApproveDealEvent(_hashDeal, deal.seller, deal.buyer);

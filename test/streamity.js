@@ -19,19 +19,19 @@ contract('StreamityContract', function (accounts) {
     var ownerContract = accounts[0];
     it("StreamityContract start", function () {
         StreamityContract.deployed().then(function (instance) {
-            streamityToken = instance; 
+            streamityToken = instance;
             var UNIX_TIMESTAMP = Math.round(new Date().getTime() / 1000);
             return streamityToken.startCrowd(1000, UNIX_TIMESTAMP, 5, 0, 0);
-        }).then(function(result){
-            return streamityToken.transferWeb3js(accounts[1], 5, {from: ownerContract});
-        }).then(function(result){
-           return streamityToken.balanceOf.call(accounts[1]);
-        }).then(function(result){
+        }).then(function (result) {
+            return streamityToken.transferWeb3js(accounts[1], 5, { from: ownerContract });
+        }).then(function (result) {
+            return streamityToken.balanceOf.call(accounts[1]);
+        }).then(function (result) {
             assert.equal(5, result.toString(), "Can't transfer token to account");
-            return streamityToken.approve(StreamityEscrow.address, 4, {from: accounts[1]}); // approve for Escrow smart contract 
-        }).then(function(result){
+            return streamityToken.approve(StreamityEscrow.address, 4, { from: accounts[1] }); // approve for Escrow smart contract 
+        }).then(function (result) {
             return streamityToken.allowance.call(accounts[1], StreamityEscrow.address);
-        }).then(function(result){
+        }).then(function (result) {
             assert.equal(4, result.toString(), "Status deal is not wait");
         });
     });
@@ -48,12 +48,12 @@ contract('StreamityEscrow', function (accounts) {
     var commission = Web3Utils.toWei((value_eth * 5 / 100).toString(), 'ether'); // 5 %
     var hash = utils.solidityKeccak256(['bytes32', 'address', 'address', 'uint256', 'uint256'], [tradeID, seller, buyer, value, commission]);
     var signature = getSignatureSig(privateKeyOwner, hash);
-	
+
     it("Create deal", function () {
-		
+
         return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
-			
+
             return stm.pay(tradeID, seller, buyer, value, commission, signature, {
                 value: value,
                 from: seller
@@ -82,33 +82,35 @@ contract('StreamityEscrow', function (accounts) {
     it("Try cancel deal before 2 hours", function () {
         return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
-            return stm.cancelSeller.call(hash, 0, {from : ownerContract});
+            return stm.cancelSeller.call(hash, 0, { from: ownerContract });
         }).then(function (result) {
             assert.equal(true, result, "Status deal is not wait");
         });
     });
 
     it("Try Release unprove tokens", function () {
-      return StreamityEscrow.deployed().then(function (instance) {
-          stm = instance;
+        return StreamityEscrow.deployed().then(function (instance) {
+            stm = instance;
 
-          return stm.releaseTokens(hash, 0, {from: buyer});
-      }).then(function (result) {
-         return stm.releaseTokens(hash, 0, {from: seller});
-      }).then(function (result) {
-         return stm.releaseTokens(hash, 0, {from: ownerContract});
-      }).then(function (result) {
-        return stm.getStatusDeal(hash);
-      }).then(function (result) {
-        assert.equal(STATUS_DEAL_WAIT_CONFIRMATION, parseInt(result, 16), "Deal must has status wait confirmation");
-      });
+            return stm.releaseTokens(hash, 0, { from: buyer });
+        }).then(function (result) {
+            return stm.releaseTokens(hash, 0, { from: seller });
+        }).then(function (result) {
+            return stm.releaseTokens(hash, 0, { from: ownerContract });
+        }).then(function (result) {
+            return stm.getStatusDeal(hash);
+        }).then(function (result) {
+            assert.equal(true, false, "Deal must has status wait confirmation");
+        }).catch(function (e) {
+            var index = e.message.indexOf("revert");
+            assert.notEqual(index, -1, "Deal must has status wait confirmation");
+        });
     });
 
     it("Approve deal", function () {
         return StreamityEscrow.deployed().then(function (instance) {
             stm = instance;
-
-            return stm.approveDeal(hash, {from: ownerContract});
+            return stm.approveDeal(hash, { from: ownerContract });
         }).then(function (result) {
             if (result.tx === undefined)
                 throw "result.tx is undefined";
@@ -119,27 +121,21 @@ contract('StreamityEscrow', function (accounts) {
     });
 
     it("Release tokens", function () {
-      return StreamityEscrow.deployed().then(function (instance) {
-          stm = instance;
-
-          return stm.releaseTokens.call(hash, 0, {from: buyer});
-      }).then(function (result) {
-         assert.equal(true, result, "Problem with deal");
-         return stm.releaseTokens(hash, 0, {from: buyer});
-      }).then(function (result) {
-        return stm.releaseTokens.call(hash, 0, {from: buyer});
-     }).then(function (result) {
-        assert.equal(false, result, "You can't relese twice");
-        return stm.getStatusDeal(hash);
-      }).then(function (result) {
-        assert.equal(STATUS_NO_DEAL, parseInt(result, 16), "Deal must has been deleted");
-      });
+        return StreamityEscrow.deployed().then(function (instance) {
+            stm = instance;
+            return stm.releaseTokens(hash, 0, { from: buyer });
+        }).then(function (result) {
+            if (result.tx === undefined)
+                throw "result.tx is undefined";
+            return stm.getStatusDeal(hash);
+        }).then(function (result) {
+            assert.equal(STATUS_NO_DEAL, parseInt(result, 16), "Deal must has been deleted");
+        });
     });
-    
+
 });
 
 function getSignature(privateKey, message) {
-
     var signingKey = new SigningKey(privateKey);
     var sig = signingKey.signDigest(message);
 
@@ -155,14 +151,14 @@ function getSignature(privateKey, message) {
 
 // sign
 function getSignatureSig(privateKey, message) {
-    
-        var signingKey = new SigningKey(privateKey);
-        var sig = signingKey.signDigest(message);
-    
-        signature = (hexPad(sig.r, 32) + hexPad(sig.s, 32).substring(2) + (sig.recoveryParam ? '1c' : '1b'));
-    
-        return signature;
-    }
+
+    var signingKey = new SigningKey(privateKey);
+    var sig = signingKey.signDigest(message);
+
+    signature = (hexPad(sig.r, 32) + hexPad(sig.s, 32).substring(2) + (sig.recoveryParam ? '1c' : '1b'));
+
+    return signature;
+}
 
 function hexPad(value, length) {
     while (value.length < 2 * length + 2) {
